@@ -36,6 +36,7 @@
             {{ message.body }}
           </div>
         </div>
+        <div></div>
       </main>
       <footer>
         <form @submit.prevent="sendMessage">
