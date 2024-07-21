@@ -9,6 +9,9 @@
           v-model="inputLogin"
         />
         <button type="submit">login</button>
+        <button type="submit" @click="googleLogin">
+          login with Google account
+        </button>
       </form>
     </div>
     <div class="chat" v-else>
@@ -50,6 +53,8 @@
 
 <script>
 import { ref, reactive, onMounted } from "vue";
+// import firebase from "firebase/compat/app";
+import { getAuth, GoogleAuthProvider, signInWithPopup } from "firebase/auth";
 // import { ref } from "firebase/compat/database";
 
 import db from "./db";
@@ -76,6 +81,22 @@ export default {
 
     const getFirstLetter = (username) => {
       return username.charAt(0);
+    };
+
+    const googleLogin = () => {
+      const provider = new GoogleAuthProvider();
+      signInWithPopup(getAuth(), provider)
+        .then((result) => {
+          const user = result.user.displayName;
+          if (user) {
+            state.username = user;
+            inputLogin.value = "";
+          }
+          // console.log(user);
+        })
+        .catch((error) => {
+          console.log(error);
+        });
     };
 
     const sendMessage = () => {
@@ -118,6 +139,7 @@ export default {
       state,
       sendMessage,
       getFirstLetter,
+      googleLogin,
     };
   },
 };
