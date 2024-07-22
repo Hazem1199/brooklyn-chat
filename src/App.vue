@@ -1,16 +1,16 @@
 <template>
   <div id="app" class="container">
-    <div class="login" v-if="state.username === '' || state.username === null">
+    <div class="login" v-if="!state.username">
       <form @submit.prevent="login">
         <h1>VueChat</h1>
         <input
           type="text"
-          placeholder="Please enter your name .. "
+          placeholder="Please enter your name ..."
           v-model="inputLogin"
         />
-        <button type="submit">login</button>
-        <button type="submit" @click="googleLogin">
-          login with Google account
+        <button type="submit">Login</button>
+        <button type="button" @click="googleLogin">
+          Login with Google account
         </button>
       </form>
     </div>
@@ -18,7 +18,12 @@
       <header>
         <div class="header-user">
           <div class="user-icon">
-            {{ getFirstLetter(state.username) }}
+            <img
+              class="user-icon"
+              v-if="state.img"
+              :src="state.img"
+              alt="User profile image"
+            />
           </div>
           <h2>{{ state.username }}</h2>
         </div>
@@ -27,25 +32,29 @@
       <main>
         <div
           class="message-box"
-          :class="state.username === message.username && 'current-user'"
+          :class="state.username === message.username ? 'current-user' : ''"
           v-for="message in state.messages"
           :key="message.id"
         >
-          <div class="user-icon">{{ getFirstLetter(message.username) }}</div>
-          <div class="message">
-            {{ message.body }}
+          <div class="user-icon">
+            <img
+              class="user-icon"
+              v-if="message.img"
+              :src="message.img"
+              alt="User profile image"
+            />
           </div>
+          <div class="message">{{ message.body }}</div>
         </div>
-        <div></div>
       </main>
       <footer>
         <form @submit.prevent="sendMessage">
           <input
             type="text"
-            placeholder="Write a message .."
+            placeholder="Write a message ..."
             v-model="inputMessage"
           />
-          <button type="submit">send</button>
+          <button type="submit">Send</button>
         </form>
       </footer>
     </div>
@@ -64,40 +73,65 @@ export default {
     const inputLogin = ref("");
     const inputMessage = ref("");
 
+    // const UserInfo = getAuth().currentUser;
+
+    // onMounted(() => {
+    //   UserInfo.then((user) => {
+    //     if (user) {
+    //       console.log(user);
+    //     } else {
+    //       console.log("No user is signed in");
+    //     }
+    //   });
+    // });
+
     const state = reactive({
       username: "",
       messages: [],
+      img: null, // Default to null
     });
 
     const login = () => {
-      if (inputLogin.value !== "" || inputLogin.value !== null) {
+      if (inputLogin.value) {
         state.username = inputLogin.value;
         inputLogin.value = "";
       }
     };
 
     const logout = () => {
-      state.username = "";
-    };
-
-    const getFirstLetter = (username) => {
-      return username.charAt(0);
-    };
-
-    const googleLogin = () => {
-      const provider = new GoogleAuthProvider();
-      signInWithPopup(getAuth(), provider)
+      const auth = getAuth();
+      auth
+        .signOut()
         .then((result) => {
-          const user = result.user.displayName;
-          if (user) {
-            state.username = user;
-            inputLogin.value = "";
-          }
-          console.log(user);
+          console.log(result);
+          state.username = "";
+          state.img = null;
         })
         .catch((error) => {
-          console.log(error);
+          console.error("Logout Failed:", error);
         });
+    };
+
+    const googleLogin = async () => {
+      const provider = new GoogleAuthProvider();
+      const auth = getAuth();
+      // const current = auth.currentUser;
+      try {
+        const result = await signInWithPopup(auth, provider);
+        const user = result.user;
+        console.log(user);
+        state.username = user.displayName;
+        state.img = user.photoURL;
+        // console.log(current);
+        const usersRef = db.database().ref("users");
+        const userRef = usersRef.child(user.uid);
+        userRef.set({
+          username: user.displayName,
+          img: user.photoURL,
+        });
+      } catch (error) {
+        console.error("Login Failed:", error);
+      }
     };
 
     const sendMessage = () => {
@@ -108,6 +142,7 @@ export default {
       }
       const message = {
         username: state.username,
+        img: state.img,
         body: inputMessage.value,
       };
 
@@ -125,6 +160,7 @@ export default {
           messages.push({
             id: key,
             username: data[key].username,
+            img: data[key].img,
             body: data[key].body,
           });
         });
@@ -139,8 +175,8 @@ export default {
       logout,
       state,
       sendMessage,
-      getFirstLetter,
       googleLogin,
+      // UserInfo,
     };
   },
 };
