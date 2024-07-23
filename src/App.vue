@@ -91,7 +91,7 @@ export default {
   setup() {
     const inputLogin = ref("");
     const inputMessage = ref("");
-    const isLoggedIn = ref(true);
+    const isLoggedIn = ref();
 
     // const UserInfo = getAuth().currentUser;
 
@@ -154,7 +154,7 @@ export default {
         userRef.set({
           username: user.displayName,
           img: user.photoURL,
-          isLoggedIn: isLoggedIn.value,
+          isLoggedIn: true,
         });
       } catch (error) {
         console.error("Login Failed:", error);
@@ -188,6 +188,7 @@ export default {
           img: data.img,
           isLoggedIn: data.isLoggedIn,
         });
+        console.log("users", state.users);
       });
 
       messagesRef.on("value", (snapshot) => {
