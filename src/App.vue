@@ -26,6 +26,9 @@
             />
           </div>
           <h2>{{ state.username }}</h2>
+          <div v-if="otherUserTyping" class="typing-indicator">
+            Someone is typing...
+          </div>
         </div>
         <div class="header-logout" @click="logout">Logout</div>
       </header>
@@ -48,6 +51,7 @@
             <div v-if="user.username" class="message-box">
               {{ user.username }}
             </div>
+            <div v-if="user.typing" class="typing-indicator">Typing...</div>
           </div>
         </main>
         <main>
@@ -75,6 +79,8 @@
             type="text"
             placeholder="Write a message ..."
             v-model="inputMessage"
+            @input="handleTypingStart"
+            @blur="handleTypingStop"
           />
           <button type="submit">Send</button>
         </form>
@@ -99,6 +105,7 @@ export default {
       users: [],
       img: null,
       isLoggedIn: null,
+      typing: null,
       to: null,
     });
 
