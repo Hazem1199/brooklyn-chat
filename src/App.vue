@@ -37,7 +37,7 @@
             :key="user.id"
             style="position: relative"
           >
-            <span class="isLoggin" v-if="user.isLoggedIn"></span>
+            <span class="isLoggin" v-show="user.isLoggedIn"></span>
             <img
               class="user-icon"
               v-if="user.img"
@@ -109,13 +109,14 @@ export default {
 
     const logout = () => {
       const auth = getAuth();
+      const user = auth.currentUser;
       auth
         .signOut()
         .then(() => {
           state.username = "";
           state.img = null;
           state.isLoggedIn = false; // Set isLoggedIn to false on logout
-          updateUserStatus(state.isLoggedIn); // Update status in database
+          updateUserStatus(state.isLoggedIn, user.uid); // Update status in database
         })
         .catch((error) => {
           console.error("Logout Failed:", error);
