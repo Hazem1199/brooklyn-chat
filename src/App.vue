@@ -29,24 +29,46 @@
         </div>
         <div class="header-logout" @click="logout">Logout</div>
       </header>
-      <main>
-        <div
-          class="message-box"
-          :class="state.username === message.username ? 'current-user' : ''"
-          v-for="message in state.messages"
-          :key="message.id"
-        >
-          <div class="user-icon">
+      <div class="main-box">
+        <main class="user-box">
+          <div
+            class="message-box"
+            v-for="user in state.users"
+            :key="user.id"
+            style="position: relative"
+          >
+            <span
+              class="isLoggin"
+              v-if="user.username === state.username"
+            ></span>
             <img
               class="user-icon"
-              v-if="message.img"
-              :src="message.img"
+              v-if="user.img"
+              :src="user.img"
               alt="User profile image"
             />
+            <div class="message-box">{{ user.username }}</div>
           </div>
-          <div class="message">{{ message.body }}</div>
-        </div>
-      </main>
+        </main>
+        <main>
+          <div
+            class="message-box"
+            :class="state.username === message.username ? 'current-user' : ''"
+            v-for="message in state.messages"
+            :key="message.id"
+          >
+            <div class="user-icon">
+              <img
+                class="user-icon"
+                v-if="message.img"
+                :src="message.img"
+                alt="User profile image"
+              />
+            </div>
+            <div class="message">{{ message.body }}</div>
+          </div>
+        </main>
+      </div>
       <footer>
         <form @submit.prevent="sendMessage">
           <input
@@ -72,6 +94,7 @@ export default {
   setup() {
     const inputLogin = ref("");
     const inputMessage = ref("");
+    const isLoggedIn = ref(false);
 
     // const UserInfo = getAuth().currentUser;
 
@@ -88,12 +111,14 @@ export default {
     const state = reactive({
       username: "",
       messages: [],
+      users: [],
       img: null, // Default to null
     });
 
     const login = () => {
       if (inputLogin.value) {
         state.username = inputLogin.value;
+        isLoggedIn.value = true;
         inputLogin.value = "";
       }
     };
@@ -106,6 +131,7 @@ export default {
           console.log(result);
           state.username = "";
           state.img = null;
+          isLoggedIn.value = false;
         })
         .catch((error) => {
           console.error("Logout Failed:", error);
@@ -152,6 +178,15 @@ export default {
 
     onMounted(() => {
       const messagesRef = db.database().ref("messages");
+      const usersRef = db.database().ref("users");
+      usersRef.on("child_added", (snapshot) => {
+        const data = snapshot.val();
+        state.users.push({
+          id: snapshot.key,
+          username: data.username,
+          img: data.img,
+        });
+      });
 
       messagesRef.on("value", (snapshot) => {
         const data = snapshot.val();
@@ -177,6 +212,7 @@ export default {
       sendMessage,
       googleLogin,
       // UserInfo,
+      isLoggedIn,
     };
   },
 };
@@ -206,7 +242,7 @@ body {
   min-height: 90vh;
   background-color: #92829e;
 
-  width: 320px;
+  width: 60%;
   border-radius: 20px;
   box-shadow: 3px 3px 8px rgba(0, 0, 0, 0.1);
 
@@ -262,6 +298,16 @@ body {
 
 .login button:hover {
   background-color: #ec9e9e;
+}
+
+.isLoggin {
+  position: absolute;
+  top: -10px;
+  right: -10px;
+  padding: 10px 10px;
+  border-radius: 50%;
+  background-color: lawngreen;
+  /* color: white; */
 }
 
 input {
@@ -332,6 +378,24 @@ header h2 {
   box-shadow: 0 0 4px rgba(0, 0, 0, 0.1);
 }
 
+.main-box {
+  display: flex;
+  flex-grow: 1;
+}
+
+.user-box {
+  background-color: #7d799b;
+  color: #fff;
+  border-radius: 20px;
+  padding: 1rem;
+  /* width: 20%; */
+  max-height: calc(90vh - 130px);
+  border-top-left-radius: 20px;
+  width: 5%;
+  /* overflow-y: auto; */
+  margin-right: 7px;
+}
+
 main {
   background-color: #fff;
   flex-grow: 1;
@@ -342,7 +406,7 @@ main {
   flex-direction: column;
   border-top-right-radius: 20px;
   border-top-left-radius: 20px;
-  max-height: calc(90vh - 130px);
+  /* max-height: calc(90vh - 130px); */
   overflow-y: auto;
 }
 
@@ -366,6 +430,7 @@ main::-webkit-scrollbar-thumb {
   display: flex;
   margin-bottom: 1rem;
   position: relative;
+  flex-shrink: 1;
 }
 
 .message-box .message {
@@ -402,6 +467,7 @@ main::-webkit-scrollbar-thumb {
 
 footer {
   background: #fff;
+  border-top-left-radius: 20px;
 }
 
 footer form {
