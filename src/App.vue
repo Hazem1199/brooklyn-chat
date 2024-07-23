@@ -143,6 +143,8 @@ export default {
     ) => {
       const usersRef = db.database().ref("users/" + userId);
       usersRef.update({
+        username: state.username,
+        img: state.img,
         isLoggedIn,
       });
     };
