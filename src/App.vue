@@ -94,7 +94,7 @@ export default {
   setup() {
     const inputLogin = ref("");
     const inputMessage = ref("");
-    const isLoggedIn = ref(false);
+    const isLoggedIn = ref(true);
 
     // const UserInfo = getAuth().currentUser;
 
@@ -154,6 +154,7 @@ export default {
         userRef.set({
           username: user.displayName,
           img: user.photoURL,
+          isLoggedIn: isLoggedIn.value,
         });
       } catch (error) {
         console.error("Login Failed:", error);
@@ -185,6 +186,7 @@ export default {
           id: snapshot.key,
           username: data.username,
           img: data.img,
+          isLoggedIn: data.isLoggedIn,
         });
       });
 
@@ -304,7 +306,7 @@ body {
   position: absolute;
   top: -10px;
   right: -10px;
-  padding: 10px 10px;
+  padding: 5px 5%;
   border-radius: 50%;
   background-color: lawngreen;
   /* color: white; */
