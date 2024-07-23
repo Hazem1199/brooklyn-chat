@@ -82,40 +82,27 @@
 
 <script>
 import { ref, reactive, onMounted } from "vue";
-// import firebase from "firebase/compat/app";
 import { getAuth, GoogleAuthProvider, signInWithPopup } from "firebase/auth";
-// import { ref } from "firebase/compat/database";
-
 import db from "./db";
+
 export default {
   setup() {
     const inputLogin = ref("");
     const inputMessage = ref("");
-    const isLoggedIn = ref();
-
-    // const UserInfo = getAuth().currentUser;
-
-    // onMounted(() => {
-    //   UserInfo.then((user) => {
-    //     if (user) {
-    //       console.log(user);
-    //     } else {
-    //       console.log("No user is signed in");
-    //     }
-    //   });
-    // });
 
     const state = reactive({
       username: "",
       messages: [],
       users: [],
-      img: null, // Default to null
+      img: null,
+      isLoggedIn: false,
     });
 
     const login = () => {
       if (inputLogin.value) {
         state.username = inputLogin.value;
-        isLoggedIn.value = true;
+        state.isLoggedIn = true; // Set isLoggedIn to true on manual login
+        updateUserStatus(state.isLoggedIn); // Update status in database
         inputLogin.value = "";
       }
     };
@@ -124,14 +111,11 @@ export default {
       const auth = getAuth();
       auth
         .signOut()
-        .then((result) => {
-          console.log(result);
+        .then(() => {
           state.username = "";
           state.img = null;
-          const usersRef = db.database().ref("users");
-          usersRef.child(auth.currentUser.uid).update({
-            isLoggedIn: false,
-          });
+          state.isLoggedIn = false; // Set isLoggedIn to false on logout
+          updateUserStatus(state.isLoggedIn); // Update status in database
         })
         .catch((error) => {
           console.error("Logout Failed:", error);
@@ -141,29 +125,30 @@ export default {
     const googleLogin = async () => {
       const provider = new GoogleAuthProvider();
       const auth = getAuth();
-      // const current = auth.currentUser;
       try {
         const result = await signInWithPopup(auth, provider);
         const user = result.user;
-        console.log(user);
         state.username = user.displayName;
         state.img = user.photoURL;
-        // console.log(current);
-        const usersRef = db.database().ref("users");
-        const userRef = usersRef.child(user.uid);
-        userRef.set({
-          username: user.displayName,
-          img: user.photoURL,
-          isLoggedIn: true,
-        });
+        state.isLoggedIn = true; // Set isLoggedIn to true on Google login
+        updateUserStatus(state.isLoggedIn, user.uid); // Update status in database
       } catch (error) {
         console.error("Login Failed:", error);
       }
     };
 
+    const updateUserStatus = (
+      isLoggedIn,
+      userId = getAuth().currentUser?.uid
+    ) => {
+      const usersRef = db.database().ref("users/" + userId);
+      usersRef.update({
+        isLoggedIn,
+      });
+    };
+
     const sendMessage = () => {
       const messagesRef = db.database().ref("messages");
-
       if (inputMessage.value === "" || inputMessage.value === null) {
         return;
       }
@@ -172,7 +157,6 @@ export default {
         img: state.img,
         body: inputMessage.value,
       };
-
       messagesRef.push(message);
       inputMessage.value = "";
     };
@@ -188,7 +172,6 @@ export default {
           img: data.img,
           isLoggedIn: data.isLoggedIn,
         });
-        console.log("users", state.users);
       });
 
       messagesRef.on("value", (snapshot) => {
@@ -214,8 +197,7 @@ export default {
       state,
       sendMessage,
       googleLogin,
-      // UserInfo,
-      isLoggedIn,
+      isLoggedIn: state.isLoggedIn,
     };
   },
 };
