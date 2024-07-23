@@ -37,14 +37,17 @@
             :key="user.id"
             style="position: relative"
           >
-            <span class="isLoggin" v-show="user.isLoggedIn"></span>
+            <span class="isLoggin" v-show="user.isLoggedIn == true"></span>
             <img
-              class="user-icon"
               v-if="user.img"
+              class="user-icon"
+              v-show="user.img"
               :src="user.img"
               alt="User profile image"
             />
-            <div class="message-box">{{ user.username }}</div>
+            <div v-if="user.username" class="message-box">
+              {{ user.username }}
+            </div>
           </div>
         </main>
         <main>
@@ -95,7 +98,8 @@ export default {
       messages: [],
       users: [],
       img: null,
-      isLoggedIn: false,
+      isLoggedIn: null,
+      to: null,
     });
 
     const login = () => {
@@ -117,6 +121,7 @@ export default {
           state.img = null;
           state.isLoggedIn = false; // Set isLoggedIn to false on logout
           updateUserStatus(state.isLoggedIn, user.uid); // Update status in database
+          console.log(state.users);
         })
         .catch((error) => {
           console.error("Logout Failed:", error);
@@ -131,8 +136,10 @@ export default {
         const user = result.user;
         state.username = user.displayName;
         state.img = user.photoURL;
+        state.to = user.uid;
         state.isLoggedIn = true; // Set isLoggedIn to true on Google login
         updateUserStatus(state.isLoggedIn, user.uid); // Update status in database
+        console.log(state.users);
       } catch (error) {
         console.error("Login Failed:", error);
       }
@@ -158,6 +165,7 @@ export default {
       const message = {
         username: state.username,
         img: state.img,
+        to: state.to,
         body: inputMessage.value,
       };
       messagesRef.push(message);
@@ -167,6 +175,7 @@ export default {
     onMounted(() => {
       const messagesRef = db.database().ref("messages");
       const usersRef = db.database().ref("users");
+
       usersRef.on("child_added", (snapshot) => {
         const data = snapshot.val();
         state.users.push({
@@ -177,6 +186,20 @@ export default {
         });
       });
 
+      // Listen for changes in each user's data
+      usersRef.on("child_changed", (snapshot) => {
+        const data = snapshot.val();
+        const index = state.users.findIndex((u) => u.id === snapshot.key);
+        if (index !== -1) {
+          state.users[index] = {
+            id: snapshot.key,
+            username: data.username,
+            img: data.img,
+            isLoggedIn: data.isLoggedIn,
+          };
+        }
+      });
+
       messagesRef.on("value", (snapshot) => {
         const data = snapshot.val();
         let messages = [];
@@ -185,6 +208,7 @@ export default {
             id: key,
             username: data[key].username,
             img: data[key].img,
+            to: data[key].to,
             body: data[key].body,
           });
         });
