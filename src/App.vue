@@ -37,10 +37,7 @@
             :key="user.id"
             style="position: relative"
           >
-            <span
-              class="isLoggin"
-              v-if="user.username === state.username"
-            ></span>
+            <span class="isLoggin" v-if="user.isLoggedIn"></span>
             <img
               class="user-icon"
               v-if="user.img"
@@ -131,7 +128,10 @@ export default {
           console.log(result);
           state.username = "";
           state.img = null;
-          isLoggedIn.value = false;
+          const usersRef = db.database().ref("users");
+          usersRef.child(auth.currentUser.uid).update({
+            isLoggedIn: false,
+          });
         })
         .catch((error) => {
           console.error("Logout Failed:", error);
@@ -306,8 +306,10 @@ body {
   position: absolute;
   top: -10px;
   right: -10px;
-  padding: 5px 5%;
+  width: 10px;
+  height: 10px;
   border-radius: 50%;
+  padding: 0;
   background-color: lawngreen;
   /* color: white; */
 }
