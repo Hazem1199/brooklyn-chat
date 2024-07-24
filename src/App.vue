@@ -36,9 +36,10 @@
         <main class="user-box">
           <div
             class="message-box"
-            v-for="user in state.users"
+            v-for="user in filteredUsers"
             :key="user.id"
-            style="position: relative"
+            @click="createPrivateRoom(user)"
+            style="position: relative; cursor: pointer"
           >
             <span class="isLoggin" v-show="user.isLoggedIn == true"></span>
             <img
@@ -90,7 +91,7 @@
 </template>
 
 <script>
-import { ref, reactive, onMounted } from "vue";
+import { ref, reactive, computed, onMounted } from "vue";
 import { getAuth, GoogleAuthProvider, signInWithPopup } from "firebase/auth";
 import db from "./db";
 
@@ -107,6 +108,7 @@ export default {
       isLoggedIn: null,
       typing: null,
       to: null,
+      currentRoom: null,
     });
 
     const login = () => {
@@ -165,7 +167,7 @@ export default {
     };
 
     const sendMessage = () => {
-      const messagesRef = db.database().ref("messages");
+      const messagesRef = db.database().ref("messages/" + state.currentRoom);
       if (inputMessage.value === "" || inputMessage.value === null) {
         return;
       }
@@ -179,8 +181,40 @@ export default {
       inputMessage.value = "";
     };
 
+    const createPrivateRoom = (user) => {
+      const auth = getAuth();
+      const currentUser = auth.currentUser;
+      if (currentUser) {
+        const roomId = [currentUser.uid, user.id].sort().join("-");
+        state.currentRoom = roomId;
+        state.to = user.id;
+        loadMessages(roomId);
+      }
+    };
+
+    const loadMessages = (roomId) => {
+      const messagesRef = db.database().ref("messages/" + roomId);
+      messagesRef.on("value", (snapshot) => {
+        const data = snapshot.val();
+        let messages = [];
+        Object.keys(data || {}).forEach((key) => {
+          messages.push({
+            id: key,
+            username: data[key].username,
+            img: data[key].img,
+            to: data[key].to,
+            body: data[key].body,
+          });
+        });
+        state.messages = messages;
+      });
+    };
+
+    const filteredUsers = computed(() =>
+      state.users.filter((user) => user.username !== state.username)
+    );
+
     onMounted(() => {
-      const messagesRef = db.database().ref("messages");
       const usersRef = db.database().ref("users");
 
       usersRef.on("child_added", (snapshot) => {
@@ -206,21 +240,6 @@ export default {
           };
         }
       });
-
-      messagesRef.on("value", (snapshot) => {
-        const data = snapshot.val();
-        let messages = [];
-        Object.keys(data || {}).forEach((key) => {
-          messages.push({
-            id: key,
-            username: data[key].username,
-            img: data[key].img,
-            to: data[key].to,
-            body: data[key].body,
-          });
-        });
-        state.messages = messages;
-      });
     });
 
     return {
@@ -231,6 +250,8 @@ export default {
       state,
       sendMessage,
       googleLogin,
+      createPrivateRoom,
+      filteredUsers,
       isLoggedIn: state.isLoggedIn,
     };
   },
@@ -288,7 +309,6 @@ body {
 .login h1 {
   text-align: center;
   font-size: 1.5rem;
-
   margin-bottom: 1.5rem;
 }
 
