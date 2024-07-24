@@ -17,6 +17,7 @@
     <div class="chat" v-else>
       <header>
         <div class="header-user">
+          <button class="sidebar-toggle" @click="toggleSidebar">☰</button>
           <div class="user-icon">
             <img
               class="user-icon"
@@ -33,7 +34,7 @@
         <div class="header-logout" @click="logout">Logout</div>
       </header>
       <div class="main-box">
-        <main class="user-box">
+        <main class="user-box" :class="{ collapsed: isSidebarCollapsed }">
           <div
             class="message-box"
             v-for="user in filteredUsers"
@@ -49,13 +50,15 @@
               :src="user.img"
               alt="User profile image"
             />
-            <div v-if="user.username" class="message-box">
-              {{ user.username }}
+            <div
+              v-if="!isSidebarCollapsed && user.username"
+              class="message-box"
+            >
+              {{ user.username.split(" ")[0] }}
             </div>
-            <div v-if="user.typing" class="typing-indicator">Typing...</div>
           </div>
         </main>
-        <main>
+        <main class="chat-box">
           <div
             class="message-box"
             :class="state.username === message.username ? 'current-user' : ''"
@@ -110,6 +113,8 @@ export default {
       to: null,
       currentRoom: null,
     });
+
+    const isSidebarCollapsed = ref(false);
 
     const login = () => {
       if (inputLogin.value) {
@@ -210,6 +215,10 @@ export default {
       });
     };
 
+    const toggleSidebar = () => {
+      isSidebarCollapsed.value = !isSidebarCollapsed.value;
+    };
+
     const filteredUsers = computed(() =>
       state.users.filter((user) => user.username !== state.username)
     );
@@ -251,7 +260,9 @@ export default {
       sendMessage,
       googleLogin,
       createPrivateRoom,
+      toggleSidebar,
       filteredUsers,
+      isSidebarCollapsed,
       isLoggedIn: state.isLoggedIn,
     };
   },
@@ -268,24 +279,21 @@ export default {
 }
 
 body {
-  font-family: sans-serif;
+  font-family: "Roboto", sans-serif;
   width: 100vw;
   min-height: 95vh;
   overflow-x: hidden;
-
-  background-color: #ffeded;
+  background-color: #f0f2f5;
   background-image: linear-gradient(62deg, #f8d4d6 0%, #ffeded 100%);
 }
 
 .container {
   margin: 5vh auto 0;
   min-height: 90vh;
-  background-color: #92829e;
-
-  width: 60%;
+  background-color: #ffffff;
+  width: 70%;
   border-radius: 20px;
-  box-shadow: 3px 3px 8px rgba(0, 0, 0, 0.1);
-
+  box-shadow: 3px 3px 10px rgba(0, 0, 0, 0.1);
   overflow: hidden;
 }
 
@@ -299,23 +307,27 @@ body {
 
 .login form {
   width: 90%;
-  background-color: #f1f0f4;
+  background-color: #ffffff;
   border-radius: 20px;
   padding: 3rem 1rem;
-  box-shadow: 1px 1px 6px rgba(31, 32, 61, 0.1);
+  box-shadow: 1px 1px 8px rgba(31, 32, 61, 0.1);
   color: #5d5a72;
 }
 
 .login h1 {
   text-align: center;
-  font-size: 1.5rem;
-  margin-bottom: 1.5rem;
+  font-size: 1.8rem;
+  margin-bottom: 2rem;
+  color: #333;
 }
 
 .login input {
   width: 100%;
   border-radius: 10rem;
-  background-color: #fff;
+  background-color: #f9f9f9;
+  padding: 0.8rem;
+  border: 1px solid #ddd;
+  margin-bottom: 1rem;
 }
 
 .login button {
@@ -328,11 +340,11 @@ body {
   background-color: #feaaaa;
   cursor: pointer;
   border-radius: 10rem;
-  padding: 0.5rem;
+  padding: 0.8rem;
   border: none;
   outline: none;
   color: #fff;
-  transition: all 0.3s;
+  transition: background-color 0.3s;
 }
 
 .login button:hover {
@@ -341,14 +353,13 @@ body {
 
 .isLoggin {
   position: absolute;
-  top: -10px;
-  right: -10px;
+  bottom: 5px;
+  right: 5px;
   width: 10px;
   height: 10px;
   border-radius: 50%;
   padding: 0;
   background-color: lawngreen;
-  /* color: white; */
 }
 
 input {
@@ -370,11 +381,14 @@ header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  color: #e7e6f0;
+  color: #333;
+  background-color: #feaaaa;
+  border-bottom: 1px solid #ec9e9e;
 }
 
 header h2 {
   font-size: 1.5rem;
+  color: #fff;
 }
 
 .header-user {
@@ -382,41 +396,43 @@ header h2 {
   align-items: center;
 }
 
+.sidebar-toggle {
+  font-size: 1.5rem;
+  margin-right: 1rem;
+  background: none;
+  border: none;
+  color: #fff;
+  cursor: pointer;
+}
+
 .user-icon {
-  border-radius: 10rem;
-  width: 1.5rem;
-  height: 1.5rem;
+  border-radius: 50%;
+  width: 2.5rem;
+  height: 2.5rem;
   display: flex;
   justify-content: center;
   align-items: center;
-
-  font-size: 0.75rem;
+  font-size: 1rem;
+  position: relative;
 }
 
 .header-user .user-icon {
   background-color: #fff;
-  color: #7d799b;
+  color: #feaaaa;
   margin-right: 0.5rem;
   font-weight: bold;
 }
 
 .header-logout {
-  transition: all 0.3s;
-  padding: 0.5rem;
+  transition: background-color 0.3s;
+  padding: 0.5rem 1rem;
   border-radius: 5px;
   cursor: pointer;
-  color: #f5e1e1;
+  color: #fff;
 }
 
 .header-logout:hover {
-  background-color: #7d799a;
-
-  box-shadow: 0 0 6px rgba(0, 0, 0, 0.1);
-}
-
-.header-logout:active {
-  background-color: #5d5a72;
-  box-shadow: 0 0 4px rgba(0, 0, 0, 0.1);
+  background-color: #ec9e9e;
 }
 
 .main-box {
@@ -425,49 +441,83 @@ header h2 {
 }
 
 .user-box {
-  background-color: #7d799b;
+  background-color: #feaaaa;
   color: #fff;
-  border-radius: 20px;
+  font-weight: bold;
   padding: 1rem;
-  /* width: 20%; */
+  transition: width 0.3s, background-color 0.3s;
+  width: 20%;
   max-height: calc(90vh - 130px);
-  border-top-left-radius: 20px;
-  width: 5%;
-  /* overflow-y: auto; */
+  overflow-y: auto;
   margin-right: 7px;
 }
 
-main {
+.user-box.collapsed {
+  width: 10%;
+}
+
+.user-box .message-box {
+  display: flex;
+  align-items: center;
+  padding: 0.5rem;
+  margin-bottom: 1rem;
+  background-color: #ec9e9e;
+  border-radius: 10px;
+  transition: background-color 0.3s;
+}
+
+.user-box .message-box:hover {
+  background-color: #e58e8e;
+}
+
+.user-box .message-box .user-icon {
+  width: 2.5rem;
+  height: 2.5rem;
+  margin-right: 0.5rem;
+  position: relative;
+}
+
+.user-box .message-box .isLoggin {
+  bottom: 5px;
+  right: 5px;
+}
+
+.user-box.collapsed .message-box .user-icon {
+  margin: auto;
+}
+
+.user-box.collapsed .message-box .message-box {
+  display: none;
+}
+
+.chat-box {
   background-color: #fff;
   flex-grow: 1;
-  /* border-radius:  20px; */
-  /* box-shadow: -6px 0 6px rgba(0, 0, 0, 0.2); */
   padding: 1rem;
   display: flex;
   flex-direction: column;
   border-top-right-radius: 20px;
   border-top-left-radius: 20px;
-  /* max-height: calc(90vh - 130px); */
   overflow-y: auto;
 }
 
-main::-webkit-scrollbar-track {
+.chat-box::-webkit-scrollbar-track {
   border-radius: 10px;
   background-color: transparent;
 }
 
-main::-webkit-scrollbar {
+.chat-box::-webkit-scrollbar {
   width: 4px;
   background-color: transparent;
 }
 
-main::-webkit-scrollbar-thumb {
+.chat-box::-webkit-scrollbar-thumb {
   border-radius: 10px;
   background-color: rgba(66, 69, 129, 0.3);
 }
 
 .message-box {
-  max-width: 80%;
+  /* max-width: 80%; */
   display: flex;
   margin-bottom: 1rem;
   position: relative;
@@ -477,16 +527,16 @@ main::-webkit-scrollbar-thumb {
 .message-box .message {
   background-color: #f1f0f5;
   color: #666380;
-  padding: 0.5rem;
+  padding: 0.5rem 1rem;
   border-radius: 7px;
 }
 
 .message-box .user-icon {
   background-color: #f1f0f5;
   color: #7d799b;
-
   flex-shrink: 0;
   margin-right: 0.5rem;
+  position: relative;
 }
 
 .message-box.current-user {
@@ -512,11 +562,10 @@ footer {
 }
 
 footer form {
-  background: #7d799b;
+  background: #feaaaa;
   padding: 1rem;
   border-top-right-radius: 20px;
   border-top-left-radius: 20px;
-
   display: flex;
 }
 
@@ -525,7 +574,7 @@ footer button {
   outline: none;
   padding: 0.5rem 1rem;
   font-weight: bold;
-  background: #fea9aa;
+  background: #ec9e9e;
   border-top-right-radius: 10rem;
   border-bottom-right-radius: 10rem;
   color: #fff;
@@ -536,5 +585,20 @@ footer input {
   flex-grow: 1;
   border-top-left-radius: 10rem;
   border-bottom-left-radius: 10rem;
+}
+
+/* Responsive Styles */
+@media (max-width: 768px) {
+  .container {
+    width: 90%;
+  }
+
+  .user-box {
+    width: 40%;
+  }
+
+  .user-box.collapsed {
+    width: 10%;
+  }
 }
 </style>
