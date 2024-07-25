@@ -27,9 +27,6 @@
             />
           </div>
           <h2>{{ state.username }}</h2>
-          <div v-if="otherUserTyping" class="typing-indicator">
-            Someone is typing...
-          </div>
         </div>
         <div class="header-logout" @click="logout">Logout</div>
       </header>
@@ -54,7 +51,7 @@
               v-if="!isSidebarCollapsed && user.username"
               class="message-box"
             >
-              {{ user.username.split(" ")[0] }}
+              {{ user.username }}
             </div>
           </div>
         </main>
@@ -74,6 +71,9 @@
               />
             </div>
             <div class="message">{{ message.body }}</div>
+          </div>
+          <div v-if="state.otherUserTyping" class="typing-indicator">
+            {{ state.otherUserTyping }} is typing...
           </div>
         </main>
       </div>
@@ -96,12 +96,14 @@
 <script>
 import { ref, reactive, computed, onMounted } from "vue";
 import { getAuth, GoogleAuthProvider, signInWithPopup } from "firebase/auth";
+import { Howl } from "howler";
 import db from "./db";
 
 export default {
   setup() {
     const inputLogin = ref("");
     const inputMessage = ref("");
+    const typingTimeout = ref(null);
 
     const state = reactive({
       username: "",
@@ -112,9 +114,14 @@ export default {
       typing: null,
       to: null,
       currentRoom: null,
+      otherUserTyping: null,
     });
 
     const isSidebarCollapsed = ref(false);
+
+    const notificationSound = new Howl({
+      src: ["path/to/notification.mp3"],
+    });
 
     const login = () => {
       if (inputLogin.value) {
@@ -184,6 +191,7 @@ export default {
       };
       messagesRef.push(message);
       inputMessage.value = "";
+      handleTypingStop(); // Stop typing when message is sent
     };
 
     const createPrivateRoom = (user) => {
@@ -194,6 +202,7 @@ export default {
         state.currentRoom = roomId;
         state.to = user.id;
         loadMessages(roomId);
+        listenForTyping(roomId);
       }
     };
 
@@ -211,8 +220,54 @@ export default {
             body: data[key].body,
           });
         });
+
+        if (state.messages.length < messages.length) {
+          const lastMessage = messages[messages.length - 1];
+          if (lastMessage.username !== state.username) {
+            notificationSound.play();
+          }
+        }
+
         state.messages = messages;
       });
+    };
+
+    const listenForTyping = (roomId) => {
+      const typingRef = db.database().ref("typing/" + roomId);
+      typingRef.on("value", (snapshot) => {
+        const data = snapshot.val();
+        if (data && data.username !== state.username) {
+          state.otherUserTyping = data.username;
+        } else {
+          state.otherUserTyping = null;
+        }
+      });
+    };
+
+    const handleTypingStart = () => {
+      if (typingTimeout.value) {
+        clearTimeout(typingTimeout.value);
+      }
+      updateTypingStatus(true);
+      typingTimeout.value = setTimeout(() => {
+        updateTypingStatus(false);
+      }, 1000);
+    };
+
+    const handleTypingStop = () => {
+      if (typingTimeout.value) {
+        clearTimeout(typingTimeout.value);
+      }
+      updateTypingStatus(false);
+    };
+
+    const updateTypingStatus = (isTyping) => {
+      const typingRef = db.database().ref("typing/" + state.currentRoom);
+      if (isTyping) {
+        typingRef.set({ username: state.username });
+      } else {
+        typingRef.remove();
+      }
     };
 
     const toggleSidebar = () => {
@@ -264,6 +319,8 @@ export default {
       filteredUsers,
       isSidebarCollapsed,
       isLoggedIn: state.isLoggedIn,
+      handleTypingStart,
+      handleTypingStop,
     };
   },
 };
@@ -447,7 +504,7 @@ header h2 {
   padding: 1rem;
   transition: width 0.3s, background-color 0.3s;
   width: 20%;
-  max-height: calc(90vh - 130px);
+  /* max-height: calc(90vh - 130px); */
   overflow-y: auto;
   margin-right: 7px;
 }
