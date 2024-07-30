@@ -26,7 +26,18 @@
               alt="User profile image"
             />
           </div>
-          <h2>{{ state.username }}</h2>
+          <div
+            style="
+              display: flex;
+              flex-direction: column;
+              justify-content: center;
+            "
+          >
+            <h2>{{ state.username }}</h2>
+            <div v-if="state.otherUserTyping" class="typing-indicator">
+              {{ state.otherUserTyping }} is typing...
+            </div>
+          </div>
         </div>
         <div class="header-logout" @click="logout">Logout</div>
       </header>
@@ -47,15 +58,12 @@
               :src="user.img"
               alt="User profile image"
             />
-            <div
-              v-if="!isSidebarCollapsed && user.username"
-              class="message-box"
-            >
-              {{ user.username }}
+            <div v-if="!isSidebarCollapsed && user.username">
+              {{ user.username.split(" ")[0] }}
             </div>
           </div>
         </main>
-        <main class="chat-box">
+        <main class="chat-box" ref="chatBox">
           <div
             class="message-box"
             :class="state.username === message.username ? 'current-user' : ''"
@@ -72,12 +80,9 @@
             </div>
             <div class="message">{{ message.body }}</div>
           </div>
-          <div v-if="state.otherUserTyping" class="typing-indicator">
-            {{ state.otherUserTyping }} is typing...
-          </div>
         </main>
       </div>
-      <footer>
+      <footer v-show="state.currentRoom">
         <form @submit.prevent="sendMessage">
           <input
             type="text"
@@ -104,6 +109,7 @@ export default {
     const inputLogin = ref("");
     const inputMessage = ref("");
     const typingTimeout = ref(null);
+    const chatBox = ref(null);
 
     const state = reactive({
       username: "",
@@ -126,8 +132,8 @@ export default {
     const login = () => {
       if (inputLogin.value) {
         state.username = inputLogin.value;
-        state.isLoggedIn = true; // Set isLoggedIn to true on manual login
-        updateUserStatus(state.isLoggedIn); // Update status in database
+        state.isLoggedIn = true;
+        updateUserStatus(state.isLoggedIn);
         inputLogin.value = "";
       }
     };
@@ -140,9 +146,8 @@ export default {
         .then(() => {
           state.username = "";
           state.img = null;
-          state.isLoggedIn = false; // Set isLoggedIn to false on logout
-          updateUserStatus(state.isLoggedIn, user.uid); // Update status in database
-          console.log(state.users);
+          state.isLoggedIn = false;
+          updateUserStatus(state.isLoggedIn, user.uid);
         })
         .catch((error) => {
           console.error("Logout Failed:", error);
@@ -158,9 +163,8 @@ export default {
         state.username = user.displayName;
         state.img = user.photoURL;
         state.to = user.uid;
-        state.isLoggedIn = true; // Set isLoggedIn to true on Google login
-        updateUserStatus(state.isLoggedIn, user.uid); // Update status in database
-        console.log(state.users);
+        state.isLoggedIn = true;
+        updateUserStatus(state.isLoggedIn, user.uid);
       } catch (error) {
         console.error("Login Failed:", error);
       }
@@ -179,6 +183,7 @@ export default {
     };
 
     const sendMessage = () => {
+      scrollToBottom();
       const messagesRef = db.database().ref("messages/" + state.currentRoom);
       if (inputMessage.value === "" || inputMessage.value === null) {
         return;
@@ -191,7 +196,7 @@ export default {
       };
       messagesRef.push(message);
       inputMessage.value = "";
-      handleTypingStop(); // Stop typing when message is sent
+      handleTypingStop();
     };
 
     const createPrivateRoom = (user) => {
@@ -229,6 +234,7 @@ export default {
         }
 
         state.messages = messages;
+        scrollToBottom();
       });
     };
 
@@ -251,7 +257,7 @@ export default {
       updateTypingStatus(true);
       typingTimeout.value = setTimeout(() => {
         updateTypingStatus(false);
-      }, 1000);
+      }, 3000);
     };
 
     const handleTypingStop = () => {
@@ -278,6 +284,13 @@ export default {
       state.users.filter((user) => user.username !== state.username)
     );
 
+    const scrollToBottom = () => {
+      if (chatBox.value) {
+        console.log(chatBox.value);
+        chatBox.value.scrollTop = chatBox.value.scrollHeight;
+      }
+    };
+
     onMounted(() => {
       const usersRef = db.database().ref("users");
 
@@ -291,7 +304,6 @@ export default {
         });
       });
 
-      // Listen for changes in each user's data
       usersRef.on("child_changed", (snapshot) => {
         const data = snapshot.val();
         const index = state.users.findIndex((u) => u.id === snapshot.key);
@@ -304,6 +316,8 @@ export default {
           };
         }
       });
+
+      scrollToBottom();
     });
 
     return {
@@ -321,6 +335,7 @@ export default {
       isLoggedIn: state.isLoggedIn,
       handleTypingStart,
       handleTypingStop,
+      chatBox,
     };
   },
 };
@@ -341,7 +356,6 @@ body {
   min-height: 95vh;
   overflow-x: hidden;
   background-color: #f0f2f5;
-  background-image: linear-gradient(62deg, #f8d4d6 0%, #ffeded 100%);
 }
 
 .container {
@@ -350,7 +364,7 @@ body {
   background-color: #ffffff;
   width: 70%;
   border-radius: 20px;
-  box-shadow: 3px 3px 10px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
   overflow: hidden;
 }
 
@@ -367,15 +381,15 @@ body {
   background-color: #ffffff;
   border-radius: 20px;
   padding: 3rem 1rem;
-  box-shadow: 1px 1px 8px rgba(31, 32, 61, 0.1);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
   color: #5d5a72;
 }
 
 .login h1 {
   text-align: center;
-  font-size: 1.8rem;
+  font-size: 2rem;
   margin-bottom: 2rem;
-  color: #333;
+  color: #002768;
 }
 
 .login input {
@@ -394,7 +408,7 @@ body {
   font-size: 1rem;
   font-weight: bold;
   margin-top: 1rem;
-  background-color: #feaaaa;
+  background-color: #ba1c3b;
   cursor: pointer;
   border-radius: 10rem;
   padding: 0.8rem;
@@ -405,7 +419,7 @@ body {
 }
 
 .login button:hover {
-  background-color: #ec9e9e;
+  background-color: #9e162f;
 }
 
 .isLoggin {
@@ -434,13 +448,18 @@ input {
 }
 
 header {
+  position: sticky;
+  top: 0;
+  left: 0;
+  width: 100%;
+  z-index: 10;
   padding: 1rem;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  color: #333;
-  background-color: #feaaaa;
-  border-bottom: 1px solid #ec9e9e;
+  color: #fff;
+  background-color: #002768;
+  border-bottom: 1px solid #001a4d;
 }
 
 header h2 {
@@ -475,7 +494,7 @@ header h2 {
 
 .header-user .user-icon {
   background-color: #fff;
-  color: #feaaaa;
+  color: #002768;
   margin-right: 0.5rem;
   font-weight: bold;
 }
@@ -485,32 +504,33 @@ header h2 {
   padding: 0.5rem 1rem;
   border-radius: 5px;
   cursor: pointer;
+  background-color: #ba1c3b;
   color: #fff;
 }
 
 .header-logout:hover {
-  background-color: #ec9e9e;
+  background-color: #9e162f;
 }
 
 .main-box {
   display: flex;
   flex-grow: 1;
+  overflow: hidden;
+  /* padding-top: 70px; */
 }
 
 .user-box {
-  background-color: #feaaaa;
+  background-color: #002768;
   color: #fff;
-  font-weight: bold;
   padding: 1rem;
   transition: width 0.3s, background-color 0.3s;
-  width: 20%;
-  /* max-height: calc(90vh - 130px); */
+  width: 25%;
   overflow-y: auto;
   margin-right: 7px;
 }
 
 .user-box.collapsed {
-  width: 10%;
+  width: 9%;
 }
 
 .user-box .message-box {
@@ -518,13 +538,13 @@ header h2 {
   align-items: center;
   padding: 0.5rem;
   margin-bottom: 1rem;
-  background-color: #ec9e9e;
+  background-color: #004080;
   border-radius: 10px;
   transition: background-color 0.3s;
 }
 
 .user-box .message-box:hover {
-  background-color: #e58e8e;
+  background-color: #003366;
 }
 
 .user-box .message-box .user-icon {
@@ -550,12 +570,14 @@ header h2 {
 .chat-box {
   background-color: #fff;
   flex-grow: 1;
-  padding: 1rem;
+  padding: 1rem 1rem 0 1rem;
   display: flex;
   flex-direction: column;
   border-top-right-radius: 20px;
   border-top-left-radius: 20px;
   overflow-y: auto;
+  height: calc(90vh - 120px);
+  /* Adjust based on header height */
 }
 
 .chat-box::-webkit-scrollbar-track {
@@ -566,15 +588,16 @@ header h2 {
 .chat-box::-webkit-scrollbar {
   width: 4px;
   background-color: transparent;
+  border-radius: 10px;
 }
 
 .chat-box::-webkit-scrollbar-thumb {
   border-radius: 10px;
   background-color: rgba(66, 69, 129, 0.3);
+  transition: background-color 0.3s;
 }
 
 .message-box {
-  /* max-width: 80%; */
   display: flex;
   margin-bottom: 1rem;
   position: relative;
@@ -609,8 +632,13 @@ header h2 {
 }
 
 .message-box.current-user .message {
-  background-color: #fea9aa;
+  background-color: #ba1c3b;
   color: #ffffff;
+}
+
+.typing-indicator {
+  font-style: italic;
+  color: #888;
 }
 
 footer {
@@ -619,10 +647,10 @@ footer {
 }
 
 footer form {
-  background: #feaaaa;
+  background: #002768;
   padding: 1rem;
   border-top-right-radius: 20px;
-  border-top-left-radius: 20px;
+  /* border-top-left-radius: 20px; */
   display: flex;
 }
 
@@ -631,7 +659,7 @@ footer button {
   outline: none;
   padding: 0.5rem 1rem;
   font-weight: bold;
-  background: #ec9e9e;
+  background: #ba1c3b;
   border-top-right-radius: 10rem;
   border-bottom-right-radius: 10rem;
   color: #fff;
@@ -645,17 +673,93 @@ footer input {
 }
 
 /* Responsive Styles */
+@media (max-width: 1024px) {
+  .container {
+    width: 80%;
+  }
+
+  .user-box {
+    width: 25%;
+  }
+
+  .user-box.collapsed {
+    width: 10%;
+  }
+}
+
 @media (max-width: 768px) {
   .container {
     width: 90%;
   }
 
+  header h2 {
+    font-size: 1.2rem;
+  }
+
   .user-box {
-    width: 40%;
+    width: 30%;
   }
 
   .user-box.collapsed {
-    width: 10%;
+    width: 13.5%;
+  }
+
+  .chat-box {
+    padding: 0.5rem;
+  }
+
+  .message-box {
+    max-width: 100%;
+  }
+
+  .message-box .message {
+    font-size: 0.9rem;
+  }
+
+  footer form {
+    padding: 0.5rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .container {
+    width: 95%;
+  }
+
+  header h2 {
+    font-size: 1rem;
+  }
+
+  .user-box {
+    width: 43%;
+  }
+
+  .user-box.collapsed {
+    width: 22%;
+  }
+
+  .chat-box {
+    padding: 0.5rem;
+  }
+
+  .message-box {
+    max-width: 100%;
+  }
+
+  .message-box .message {
+    font-size: 0.8rem;
+  }
+
+  footer form {
+    padding: 0.5rem;
+  }
+
+  footer button {
+    font-size: 0.8rem;
+  }
+
+  footer input {
+    font-size: 0.8rem;
   }
 }
 </style>
