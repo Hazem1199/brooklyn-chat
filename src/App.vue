@@ -1,6 +1,6 @@
 <template>
   <div id="app" class="container">
-    <div class="login" v-if="!state.username">
+    <div class="login" v-if="!state.isLoggedIn">
       <form @submit.prevent="login">
         <h1>VueChat</h1>
         <input
@@ -144,8 +144,6 @@ export default {
       auth
         .signOut()
         .then(() => {
-          state.username = "";
-          state.img = null;
           state.isLoggedIn = false;
           updateUserStatus(state.isLoggedIn, user.uid);
         })
